@@ -5,6 +5,10 @@ import { AppModule } from '../src/app.module';
 import { DataSource } from 'typeorm';
 import { App } from 'supertest/types';
 
+const clearDatabase = async (dataSource: DataSource) => {
+  await dataSource.query(`DELETE FROM "user";`);
+};
+
 describe('AuthController (e2e)', () => {
   let app: INestApplication;
   let dataSource: DataSource;
@@ -21,42 +25,46 @@ describe('AuthController (e2e)', () => {
 
     dataSource = app.get(DataSource);
 
-    // Clear DB between test runs if needed
-    await dataSource.query(`DELETE FROM "user";`);
+    await clearDatabase(dataSource);
 
     httpServer = app.getHttpServer() as App;
+  });
+
+  afterEach(async () => {
+    await clearDatabase(dataSource);
   });
 
   afterAll(async () => {
     await app.close();
   });
 
+  const registerUser = () =>
+    request(httpServer).post('/auth/register').send({
+      email: 'test@example.com',
+      password: 'securepass',
+    });
+
   describe('/auth/register (POST)', () => {
     it('should register a new user', async () => {
-      const res = await request(httpServer)
-        .post('/auth/register')
-        .send({
-          email: 'test@example.com',
-          password: 'securepass',
-        })
-        .expect(HttpStatus.CREATED);
-
+      const res = await registerUser().expect(HttpStatus.CREATED);
       expect(res.body).toHaveProperty('access_token');
     });
 
     it('should not allow duplicate registration', async () => {
+      await registerUser();
       await request(httpServer)
         .post('/auth/register')
         .send({
           email: 'test@example.com',
           password: 'anotherpass',
         })
-        .expect(409);
+        .expect(HttpStatus.CONFLICT);
     });
   });
 
   describe('/auth/login (POST)', () => {
     it('should login the user and return token', async () => {
+      await registerUser();
       const res = await request(httpServer)
         .post('/auth/login')
         .send({
@@ -69,13 +77,14 @@ describe('AuthController (e2e)', () => {
     });
 
     it('should reject wrong password', async () => {
+      await registerUser();
       await request(httpServer)
         .post('/auth/login')
         .send({
           email: 'test@example.com',
           password: 'wrongpass',
         })
-        .expect(401);
+        .expect(HttpStatus.UNAUTHORIZED);
     });
   });
 });

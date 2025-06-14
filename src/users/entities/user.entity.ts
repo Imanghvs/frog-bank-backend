@@ -1,10 +1,12 @@
 import { Exclude } from 'class-transformer';
+import { Account } from '../../accounts/entities/account.entity';
 import {
   Entity,
   Column,
   PrimaryGeneratedColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  OneToMany,
 } from 'typeorm';
 
 @Entity()
@@ -18,6 +20,9 @@ export class User {
   @Exclude()
   @Column()
   password: string;
+
+  @OneToMany(() => Account, (account: Account) => account.owner)
+  accounts: Account[];
 
   @CreateDateColumn()
   createdAt: Date;
