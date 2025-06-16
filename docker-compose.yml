@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: frog-postgres
+    environment:
+      POSTGRES_DB: frogbank
+      POSTGRES_USER: froguser
+      POSTGRES_PASSWORD: frogpass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  app:
+    build: .
+    container_name: frog-backend
+    depends_on:
+      - postgres
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: froguser
+      POSTGRES_PASSWORD: frogpass
+      POSTGRES_DB: frogbank
+      JWT_SECRET: supersecretfrog
+    ports:
+      - "3000:3000"
+    command: npm run start:prod
+
+volumes:
+  postgres_data:
